@@ -110,8 +110,9 @@
 
   /* 清書（プレビュー / 印刷） */
   #printArea{position:absolute; left:-99999px; top:0}
+  /* 幅186mm = A4(210mm) − 左右余白12mm×2。画面での測定値と印刷結果を一致させるため固定 */
   .doc{
-    width:180mm; margin:0 auto; padding:0; background:#fff; color:#111;
+    width:186mm; margin:0 auto; padding:0; background:#fff; color:#111;
     font-size:11.5px; line-height:1.5;
   }
   .doc .page + .page{page-break-before:always; margin-top:16mm}
@@ -124,8 +125,8 @@
   .doc th,.doc td{border:1px solid #111; padding:4px 7px; vertical-align:top; font-size:11.5px}
   .doc th{width:26mm; background:#f4f6f7; text-align:center; font-weight:700; color:#111; white-space:nowrap; letter-spacing:.25em}
   .doc th.n{letter-spacing:0}
-  .doc td.big{height:26mm}
-  .doc td.big2{height:22mm}
+  .doc td.big{height:24mm}
+  .doc td.big2{height:19mm}
   .doc .sub-t{width:100%; border-collapse:collapse}
   .doc .sub-t td{border:none; border-bottom:1px dotted #777; padding:3px 5px}
   .doc .sub-t tr:last-child td{border-bottom:none}
@@ -159,7 +160,7 @@
     .wrap, .toast{display:none !important}
     body{background:#fff}
     #printArea{position:static; left:0}
-    .doc{width:auto; margin:0; padding:0}
+    .doc{width:186mm; margin:0; padding:0}
     .doc .page + .page{margin-top:0}
     @page{size:A4; margin:12mm}
   }
@@ -448,6 +449,7 @@
             <button type="button" class="send" id="btnSend">📤 総務へ送信</button>
             <button type="button" class="ghost" id="btnClear">クリア</button>
           </div>
+          <div class="hint">🖨 印刷時のおすすめ設定：<strong>用紙 A4／余白 既定／「ヘッダーとフッター」のチェックを外す</strong>。文章が長い場合は自動で縮小してA4一枚に収めます。</div>
           <div class="hint" id="sendHint">＊ の項目は入力必須です。保存すると右の履歴に追加され、いつでも再表示・複製・再印刷できます（このPC・スマホのブラウザ内に保存）。</div>
         </form>
       </div>
@@ -692,7 +694,19 @@ function buildDoc(o){
 
   return `<div class="doc">${page1}${page2}</div>`;
 }
-function renderPrint(o){ $("printArea").innerHTML = buildDoc(o); }
+/* ---------- A4 1枚に収める ----------
+   文章が長いと2枚目にはみ出すため、1ページ分の高さを超えたら
+   その用紙だけ自動で縮小する。プリンタ側のヘッダー/フッターが
+   有効でも溢れないよう、A4(297mm)より余裕をみた値を上限にする。 */
+const FIT_LIMIT_PX = 258 * (96 / 25.4);
+function fitPages(root){
+  (root || $("printArea")).querySelectorAll(".page").forEach(p=>{
+    p.style.zoom = "";
+    const h = p.getBoundingClientRect().height;
+    if(h > FIT_LIMIT_PX) p.style.zoom = Math.max(0.55, FIT_LIMIT_PX / h).toFixed(3);
+  });
+}
+function renderPrint(o){ $("printArea").innerHTML = buildDoc(o); fitPages(); }
 
 /* ---------- バリデーション ---------- */
 function validate(o){
@@ -743,11 +757,19 @@ function openPreview(o){
     <title>顧客状況報告書</title><style>${css}
     body{background:#eef1f5; padding:16px}
     #printArea{position:static; left:0}
-    .doc{background:#fff; padding:14mm 15mm; box-shadow:0 2px 12px rgba(0,0,0,.12); max-width:100%}
+    /* 幅は印刷時と同じ186mmに固定（縮小率の計算を印刷と一致させるため） */
+    .doc{background:transparent; padding:0; width:186mm; max-width:none}
+    .doc .page{background:#fff; box-shadow:0 2px 12px rgba(0,0,0,.12)}
     .bar{position:sticky; top:0; text-align:center; margin-bottom:14px}
-    @media print{ .bar{display:none} body{background:#fff; padding:0} .doc{box-shadow:none; padding:0} }
+    @media print{ .bar{display:none} body{background:#fff; padding:0} .doc .page{box-shadow:none} }
     </style></head>
-    <body><div class="bar"><button onclick="window.print()">🖨 印刷 / PDF保存</button></div>${html}</body></html>`);
+    <body><div class="bar"><button onclick="window.print()">🖨 印刷 / PDF保存</button></div>${html}
+    <script>(function(){var L=258*(96/25.4);
+      document.querySelectorAll(".page").forEach(function(p){
+        var h=p.getBoundingClientRect().height;
+        if(h>L) p.style.zoom=Math.max(0.55,L/h).toFixed(3);
+      });})();<\/script>
+    </body></html>`);
   w.document.close();
 }
 

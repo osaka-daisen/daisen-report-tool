@@ -155,8 +155,9 @@
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
 
   @media print{
-    body *{visibility:hidden}
-    #printArea, #printArea *{visibility:visible}
+    /* visibility:hidden だと領域が残って白紙ページが出るので display:none で消す */
+    .wrap, .toast{display:none !important}
+    body{background:#fff}
     #printArea{position:static; left:0}
     .doc{width:auto; margin:0; padding:0}
     .doc .page + .page{margin-top:0}
@@ -649,7 +650,7 @@ function buildDoc(o){
       <tr><th>備 考</th><td colspan="2" class="big2">${nl2br(o.biko||"")}</td></tr>
     </table>
     <div class="stamp">
-      <div class="memo">${o.keiyakusho_tenpu?"契約書（大泉衛生の）を添付・コピー":"&nbsp;"}</div>
+      <div class="memo">${o.keiyakusho_tenpu?"契約書（大泉衛生の）を添付・コピー":""}</div>
       <table>
         <tr><th>担当者</th><th>事務員</th><th>業務責任者</th><th>営業責任者</th><th>管理責任者</th><th>会　長</th></tr>
         <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>

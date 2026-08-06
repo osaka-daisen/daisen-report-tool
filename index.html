@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="theme-color" content="#1f6f5c">
+<title>顧客状況報告書ツール（営業→総務）｜大泉衛生</title>
+<style>
+  :root{
+    --ink:#1a1a1a; --sub:#5b6470; --line:#d9dee5; --line2:#eef1f5;
+    --bg:#f4f6f9; --card:#ffffff; --accent:#1f6f5c; --accent-d:#155445;
+    --warn:#b4451f; --chip:#eef4f2;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",system-ui,sans-serif;
+    font-size:14px; line-height:1.6; -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:18px 20px 60px;}
+  header.app{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    padding:14px 18px; background:var(--card); border:1px solid var(--line);
+    border-radius:12px; margin-bottom:16px;
+  }
+  header.app .logo{
+    width:42px; height:42px; border-radius:10px; background:var(--accent);
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:19px; flex:none;
+  }
+  header.app h1{font-size:17px; margin:0; letter-spacing:.02em}
+  header.app .sub{font-size:12px; color:var(--sub); margin-top:2px}
+  header.app .spacer{flex:1}
+  .layout{display:grid; grid-template-columns: 1fr 1fr; gap:16px;}
+  @media (max-width:960px){ .layout{grid-template-columns:1fr} .wrap{padding:12px 12px 80px} }
+
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden}
+  .panel > .phead{
+    display:flex; align-items:center; gap:8px;
+    padding:11px 16px; border-bottom:1px solid var(--line2);
+    font-weight:700; font-size:13px; color:var(--sub); background:#fbfcfd;
+  }
+  .panel .pbody{padding:14px 16px}
+
+  fieldset{border:none; margin:0 0 14px; padding:0}
+  fieldset legend{
+    font-size:12px; font-weight:700; color:var(--accent-d);
+    padding:3px 10px; background:var(--chip); border-radius:999px; margin-bottom:10px;
+  }
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px}
+  .grid .full{grid-column:1 / -1}
+  @media (max-width:520px){ .grid{grid-template-columns:1fr} }
+  label.field{display:block}
+  label.field .lab{display:block; font-size:12px; color:var(--sub); margin-bottom:4px; font-weight:600}
+  label.field .req{color:var(--warn); font-weight:700; margin-left:3px}
+  input,select,textarea{
+    width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
+    font:inherit; color:var(--ink); background:#fff;
+  }
+  input:focus,select:focus,textarea:focus{outline:2px solid #bfe0d6; border-color:var(--accent)}
+  textarea{resize:vertical; min-height:70px}
+
+  /* 区分チェック */
+  .checks{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:6px}
+  .checks label{
+    display:flex; align-items:center; gap:7px; padding:8px 10px; font-size:13px;
+    border:1px solid var(--line); border-radius:8px; background:#fff; cursor:pointer;
+  }
+  .checks label:has(input:checked){background:var(--chip); border-color:var(--accent); font-weight:700; color:var(--accent-d)}
+  .checks input{width:auto; margin:0; flex:none; accent-color:var(--accent)}
+  .inline-check{display:flex; align-items:center; gap:7px; font-size:13px; margin-top:6px}
+  .inline-check input{width:auto; margin:0; accent-color:var(--accent)}
+
+  .cond{display:none !important}
+  .cond.show{display:block !important}
+  .notice{
+    font-size:12px; background:#fff7ed; border:1px solid #f0d5b8; color:#8a5220;
+    padding:8px 11px; border-radius:8px; margin-bottom:10px;
+  }
+  .notice.ok{background:var(--chip); border-color:#bfe0d6; color:var(--accent-d)}
+
+  .actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px}
+  button{
+    font:inherit; cursor:pointer; border:1px solid var(--line);
+    background:#fff; color:var(--ink); padding:10px 14px; border-radius:8px; font-weight:600;
+  }
+  button:hover{background:#f4f6f9}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+  button.primary:hover{background:var(--accent-d)}
+  button.send{background:#1d4ed8; border-color:#1d4ed8; color:#fff}
+  button.send:hover{background:#1a3fb0}
+  button.ghost{background:transparent}
+  button.danger{color:var(--warn); border-color:#e7c3b6}
+  button.danger:hover{background:#fbf0eb}
+  button[disabled]{opacity:.5; cursor:not-allowed}
+
+  /* 履歴 */
+  .hist-tools{display:flex; gap:8px; margin-bottom:10px}
+  .hist-tools input{flex:1}
+  .hist-list{max-height:70vh; overflow:auto; display:flex; flex-direction:column; gap:8px}
+  .hist-item{border:1px solid var(--line); border-radius:10px; padding:10px 12px; background:#fff}
+  .hist-item .t{font-weight:700; font-size:13px}
+  .hist-item .m{font-size:12px; color:var(--sub); margin-top:2px}
+  .hist-item .badge{display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px; background:var(--chip); color:var(--accent-d); margin-left:6px}
+  .hist-item .badge.sent{background:#e6edff; color:#1d4ed8}
+  .hist-item .mini{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap}
+  .hist-item .mini button{padding:5px 9px; font-size:12px}
+  .empty{color:var(--sub); text-align:center; padding:26px 10px; font-size:13px}
+
+  /* 清書（プレビュー / 印刷） */
+  #printArea{position:absolute; left:-99999px; top:0}
+  .doc{
+    width:180mm; margin:0 auto; padding:0; background:#fff; color:#111;
+    font-size:11.5px; line-height:1.5;
+  }
+  .doc .page + .page{page-break-before:always; margin-top:16mm}
+  .doc .topdate{text-align:right; font-size:11px; margin-bottom:3mm}
+  .doc .dh{text-align:center; margin-bottom:3mm}
+  .doc .dh h2{font-size:18px; margin:0; letter-spacing:.12em; display:inline-block; border-bottom:2px solid #111; padding:0 6mm 1mm}
+  .doc .reporter{text-align:right; font-size:11.5px; margin:3mm 0 3mm}
+  .doc .reporter span{border-bottom:1px solid #111; display:inline-block; min-width:38mm; padding:0 4px}
+  .doc table{width:100%; border-collapse:collapse; margin-bottom:0}
+  .doc th,.doc td{border:1px solid #111; padding:4px 7px; vertical-align:top; font-size:11.5px}
+  .doc th{width:26mm; background:#f4f6f7; text-align:center; font-weight:700; color:#111; white-space:nowrap; letter-spacing:.25em}
+  .doc th.n{letter-spacing:0}
+  .doc td.big{height:26mm}
+  .doc td.big2{height:22mm}
+  .doc .sub-t{width:100%; border-collapse:collapse}
+  .doc .sub-t td{border:none; border-bottom:1px dotted #777; padding:3px 5px}
+  .doc .sub-t tr:last-child td{border-bottom:none}
+  .doc .sub-t td.k{width:20mm; text-align:center; border-right:1px solid #111; letter-spacing:.4em; white-space:nowrap}
+  .doc .note{font-size:10.5px; color:#333}
+  .doc .kubun-line{font-size:12px; font-weight:700}
+  .doc .yen{font-size:14px; font-weight:700; letter-spacing:.02em}
+  .doc .stamp{margin-top:5mm; display:flex; justify-content:space-between; align-items:flex-end; gap:6mm}
+  .doc .stamp .memo{font-size:11px; text-decoration:underline}
+  .doc .stamp table{width:auto}
+  .doc .stamp th,.doc .stamp td{width:17mm; text-align:center; letter-spacing:0; font-size:10.5px; padding:3px 2px}
+  .doc .stamp td{height:14mm}
+  .doc .mapbox{border:1px solid #111; border-top:none; height:88mm; padding:5px 7px; font-size:11px}
+  .doc .cap{font-size:11.5px; font-weight:700; margin:3mm 0 1mm}
+  .doc .juryo{border:1px solid #111; width:34mm; font-size:11px; margin-bottom:4mm}
+  .doc .juryo .h{border-bottom:1px solid #111; text-align:center; padding:2px}
+  .doc .juryo .b{height:14mm}
+  .doc .kutop{text-align:right; font-size:12px; margin-bottom:3mm}
+  .doc .kutop span{border-bottom:1px solid #111; display:inline-block; min-width:28mm; text-align:center}
+
+  .hint{font-size:12px; color:var(--sub); margin-top:8px}
+  .toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:#1a1a1a; color:#fff; padding:10px 18px; border-radius:999px; font-size:13px;
+    opacity:0; pointer-events:none; transition:.25s; z-index:99; max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  @media print{
+    body *{visibility:hidden}
+    #printArea, #printArea *{visibility:visible}
+    #printArea{position:static; left:0}
+    .doc{width:auto; margin:0; padding:0}
+    .doc .page + .page{margin-top:0}
+    @page{size:A4; margin:12mm}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="app">
+    <div class="logo">報</div>
+    <div>
+      <h1>顧客状況報告書ツール</h1>
+      <div class="sub">営業 → 総務 ／ 大泉衛生株式会社</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="ghost" id="btnNew">＋ 新規入力</button>
+  </header>
+
+  <div class="layout">
+    <!-- ============ 入力パネル ============ -->
+    <section class="panel">
+      <div class="phead">📝 入力フォーム</div>
+      <div class="pbody">
+        <form id="form" autocomplete="off">
+          <input type="hidden" id="editId">
+
+          <fieldset>
+            <legend>作成情報</legend>
+            <div class="grid">
+              <label class="field">
+                <span class="lab">報告日<span class="req">*</span></span>
+                <input type="date" id="hokokubi">
+              </label>
+              <label class="field">
+                <span class="lab">報告者<span class="req">*</span></span>
+                <input type="text" id="hokokusha" placeholder="例）木村">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>① 報告区分（複数選択可）<span class="req">*</span></legend>
+            <div class="checks" id="kubunBox">
+              <label><input type="checkbox" name="kubun" value="閉店・廃業">閉店・廃業</label>
+              <label><input type="checkbox" name="kubun" value="移転">移転</label>
+              <label><input type="checkbox" name="kubun" value="中止・停止">中止・停止</label>
+              <label><input type="checkbox" name="kubun" value="管理会社変更">管理会社変更</label>
+              <label><input type="checkbox" name="kubun" value="同業者へ乗り換え">同業者へ乗り換え</label>
+              <label><input type="checkbox" name="kubun" value="同業者から返却">同業者から返却</label>
+              <label><input type="checkbox" name="kubun" value="苦情">苦情</label>
+              <label><input type="checkbox" name="kubun" value="取り忘れ">取り忘れ</label>
+              <label><input type="checkbox" name="kubun" value="トラブル">トラブル</label>
+              <label><input type="checkbox" name="kubun" value="その他">その他</label>
+            </div>
+            <label class="field cond" id="kubunOtherWrap" style="margin-top:8px">
+              <span class="lab">その他（内容）</span>
+              <input type="text" id="kubun_other" placeholder="区分の内容を入力">
+            </label>
+            <div style="margin-top:10px">
+              <span class="lab" style="display:block; font-size:12px; color:var(--sub); font-weight:600; margin-bottom:4px">相手先の種別</span>
+              <div class="checks" style="grid-template-columns:1fr 1fr">
+                <label><input type="radio" name="aite_type" value="得意先関係" checked>得意先関係</label>
+                <label><input type="radio" name="aite_type" value="同業者関係">同業者関係</label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>② 受付情報</legend>
+            <div class="grid">
+              <label class="field">
+                <span class="lab">受付日</span>
+                <input type="date" id="uke_date">
+              </label>
+              <label class="field">
+                <span class="lab">受付時刻</span>
+                <input type="time" id="uke_time">
+              </label>
+              <label class="field">
+                <span class="lab">連絡の方法</span>
+                <select id="renraku_hoho">
+                  <option value="">選択してください</option>
+                  <option>電話</option>
+                  <option>面談</option>
+                  <option>FAX</option>
+                  <option>来客</option>
+                  <option>メール</option>
+                  <option>LINE</option>
+                  <option>その他</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="lab">場所・補足</span>
+                <input type="text" id="renraku_memo" placeholder="例）先方事務所 / 現場">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>③ 相手先・契約</legend>
+            <div class="grid">
+              <label class="field full">
+                <span class="lab">氏名・団体名<span class="req">*</span></span>
+                <input type="text" id="aite_name" placeholder="例）〇〇商事株式会社">
+              </label>
+              <label class="field full">
+                <span class="lab">代表者職名・代表者名（団体の場合）</span>
+                <input type="text" id="aite_daihyo" placeholder="例）代表取締役 山田太郎">
+              </label>
+              <label class="field">
+                <span class="lab">担当者名</span>
+                <input type="text" id="aite_tanto" placeholder="例）総務部 佐藤様">
+              </label>
+              <label class="field">
+                <span class="lab">連絡先</span>
+                <input type="text" id="renrakusaki" placeholder="例）06-0000-0000">
+              </label>
+              <label class="field full">
+                <span class="lab">現場名</span>
+                <input type="text" id="genba" placeholder="例）〇〇ビル 1F 店舗">
+              </label>
+              <label class="field full">
+                <span class="lab">住所</span>
+                <input type="text" id="jusho" placeholder="例）大阪市東住吉区〇〇1-2-3">
+              </label>
+              <label class="field full cond" id="dogyoshaWrap">
+                <span class="lab">関係する同業者名（乗り換え先／返却元）</span>
+                <input type="text" id="dogyosha" placeholder="例）〇〇清掃株式会社">
+              </label>
+              <label class="field">
+                <span class="lab">月額金額（円・<strong>税抜</strong>）</span>
+                <input type="number" id="getsugaku" inputmode="numeric" min="0" step="100" placeholder="例）22000">
+              </label>
+              <label class="field full">
+                <span class="lab">契約内容・回数（任意）</span>
+                <input type="text" id="keiyaku_naiyo" placeholder="例）可燃 週2回（火・金）／45L×5袋">
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>④ 広聴内容（状況等）<span class="req">*</span></legend>
+            <label class="field full">
+              <textarea id="naiyo" placeholder="いつ・誰から・何を言われたか／どういう状況かを事実ベースで"></textarea>
+            </label>
+          </fieldset>
+
+          <fieldset>
+            <legend>⑤ 営業の対応</legend>
+            <div class="grid">
+              <label class="field">
+                <span class="lab">担当</span>
+                <input type="text" id="eigyo_tanto" placeholder="例）木村">
+              </label>
+              <label class="field full">
+                <span class="lab">対応内容</span>
+                <textarea id="eigyo_taio" placeholder="現地確認・引き止め交渉・謝罪 等"></textarea>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>⑥ 業務の対応</legend>
+            <div class="grid">
+              <label class="field">
+                <span class="lab">担当</span>
+                <input type="text" id="gyomu_tanto" placeholder="例）田中">
+              </label>
+              <label class="field">
+                <span class="lab">部長</span>
+                <input type="text" id="gyomu_bucho" placeholder="例）〇〇">
+              </label>
+              <label class="field full">
+                <span class="lab">対応内容</span>
+                <textarea id="gyomu_taio" placeholder="収集ルート変更・容器回収 等"></textarea>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>⑦ 車両・対応日時</legend>
+            <div class="grid">
+              <label class="field">
+                <span class="lab">車番</span>
+                <input type="text" id="shaban" placeholder="例）12号車">
+              </label>
+              <label class="field">
+                <span class="lab">運転手</span>
+                <input type="text" id="driver" placeholder="例）鈴木">
+              </label>
+              <label class="field">
+                <span class="lab">同乗者①</span>
+                <input type="text" id="dojo1">
+              </label>
+              <label class="field">
+                <span class="lab">同乗者②</span>
+                <input type="text" id="dojo2">
+              </label>
+              <label class="field">
+                <span class="lab">対応日</span>
+                <input type="date" id="taio_date">
+              </label>
+              <label class="field">
+                <span class="lab">対応時間</span>
+                <div style="display:flex; gap:6px; align-items:center">
+                  <input type="time" id="taio_start">
+                  <span style="flex:none; color:var(--sub)">〜</span>
+                  <input type="time" id="taio_end">
+                </div>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="cond" id="kaijoWrap">
+            <legend>⑧ 契約解除登録申請書（別紙・大阪市提出用）</legend>
+            <div class="notice" id="kaijoNotice">
+              閉店・移転・中止を選んだので、<strong>大阪市の区へ出す「契約解除登録申請書」</strong>も同じ入力から自動で作ります。不要なら下のチェックを外してください。
+            </div>
+            <label class="inline-check" style="margin-bottom:10px">
+              <input type="checkbox" id="kaijo_use" checked>契約解除登録申請書を一緒に出力する
+            </label>
+            <div class="grid">
+              <label class="field">
+                <span class="lab">区（大阪市）</span>
+                <select id="ku">
+                  <option value="">選択してください</option>
+                  <option>北</option><option>都島</option><option>福島</option><option>此花</option>
+                  <option>中央</option><option>西</option><option>港</option><option>大正</option>
+                  <option>天王寺</option><option>浪速</option><option>西淀川</option><option>淀川</option>
+                  <option>東淀川</option><option>東成</option><option>生野</option><option>旭</option>
+                  <option>城東</option><option>鶴見</option><option>阿倍野</option><option>住之江</option>
+                  <option>住吉</option><option>東住吉</option><option>平野</option><option>西成</option>
+                </select>
+              </label>
+              <label class="field">
+                <span class="lab">適用理由</span>
+                <select id="tekiyo_riyu">
+                  <option value="">選択してください</option>
+                  <option>廃業（閉店）</option>
+                  <option>移転（解約）</option>
+                  <option>停止（解約）</option>
+                  <option>大阪市回収</option>
+                </select>
+              </label>
+              <label class="field full">
+                <span class="lab">該当住所（空欄なら③の住所を使用）</span>
+                <input type="text" id="kaijo_addr" placeholder="③の住所が自動で入ります">
+              </label>
+              <label class="field full">
+                <span class="lab">名称（空欄なら③の氏名・団体名を使用）</span>
+                <input type="text" id="kaijo_name" placeholder="③の氏名・団体名が自動で入ります">
+              </label>
+              <label class="field">
+                <span class="lab">契約中止日</span>
+                <input type="date" id="chushi_date">
+                <span class="inline-check"><input type="checkbox" id="chushi_mikomi">見込み</span>
+              </label>
+              <label class="field">
+                <span class="lab">届出登録日</span>
+                <input type="date" id="todokede_date">
+              </label>
+              <label class="field full">
+                <span class="lab">地図欄メモ（目印・道路名など。地図は印刷後に貼付／手描き）</span>
+                <textarea id="chizu_memo" placeholder="例）〇〇通り沿い、△△薬局の隣" style="min-height:50px"></textarea>
+              </label>
+              <label class="field full">
+                <span class="lab">Googleマップ確認</span>
+                <a id="mapLink" href="#" target="_blank" rel="noopener"
+                   style="display:inline-block; padding:9px 12px; border:1px solid var(--line); border-radius:8px; text-decoration:none; color:var(--accent-d); font-weight:600; font-size:13px">
+                  🗺 住所を地図で開く</a>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>⑨ 備考・添付</legend>
+            <label class="field full">
+              <textarea id="biko" placeholder="連絡事項・特記事項など"></textarea>
+            </label>
+            <label class="inline-check"><input type="checkbox" id="keiyakusho_tenpu">契約書（大泉衛生の）を添付・コピー済み</label>
+          </fieldset>
+
+          <div class="actions">
+            <button type="button" class="primary" id="btnSave">💾 保存（履歴へ）</button>
+            <button type="button" id="btnPreview">👁 プレビュー</button>
+            <button type="button" id="btnPrint">🖨 印刷 / PDF</button>
+            <button type="button" class="send" id="btnSend">📤 総務へ送信</button>
+            <button type="button" class="ghost" id="btnClear">クリア</button>
+          </div>
+          <div class="hint" id="sendHint">＊ の項目は入力必須です。保存すると右の履歴に追加され、いつでも再表示・複製・再印刷できます（このPC・スマホのブラウザ内に保存）。</div>
+        </form>
+      </div>
+    </section>
+
+    <!-- ============ 履歴パネル ============ -->
+    <section class="panel">
+      <div class="phead">🗂 保存済み報告書（履歴）</div>
+      <div class="pbody">
+        <div class="hist-tools">
+          <input type="text" id="search" placeholder="相手先・現場・区分などで検索">
+          <button id="btnExport" title="全履歴をJSONでバックアップ">⬇ 書出</button>
+          <button id="btnImport" title="バックアップJSONを取込">⬆ 取込</button>
+          <input type="file" id="importFile" accept="application/json" style="display:none">
+        </div>
+        <div class="hist-list" id="histList"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- 印刷用エリア -->
+<div id="printArea"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==========================================================
+   設定：Google Apps Script のウェブアプリ URL
+   デプロイ後に発行される https://script.google.com/macros/s/xxxx/exec
+   を GAS_URL に貼り付けてください。空のままだと「総務へ送信」は無効です。
+   ========================================================== */
+const GAS_URL = "";
+
+/* 合言葉。GASコード.gs の SEND_KEY と同じ文字列にしてください。
+   一致しない送信はサーバー側で弾かれます（いたずら書き込み防止）。 */
+const SEND_KEY = "dsn-gvfp7tylco";
+
+const LS_KEY = "daisen_kokyaku_report_v1";
+const $ = id => document.getElementById(id);
+
+const TEXT_FIELDS = [
+  "hokokubi","hokokusha","kubun_other",
+  "uke_date","uke_time","renraku_hoho","renraku_memo",
+  "aite_name","aite_daihyo","aite_tanto","renrakusaki","genba","jusho","dogyosha",
+  "getsugaku","keiyaku_naiyo",
+  "naiyo","eigyo_tanto","eigyo_taio","gyomu_tanto","gyomu_bucho","gyomu_taio",
+  "shaban","driver","dojo1","dojo2","taio_date","taio_start","taio_end",
+  "ku","tekiyo_riyu","kaijo_addr","kaijo_name","chushi_date","todokede_date","chizu_memo","biko"
+];
+const CHECK_FIELDS = ["chushi_mikomi","keiyakusho_tenpu","kaijo_use"];
+const KAIJO_TRIGGERS = ["閉店・廃業","移転","中止・停止"];
+
+/* ---------- storage ---------- */
+function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || []; }catch(e){ return []; } }
+function saveAll(list){ localStorage.setItem(LS_KEY, JSON.stringify(list)); }
+
+/* ---------- helpers ---------- */
+function todayStr(){ const d=new Date(); const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`; }
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function nl2br(s){ return esc(s).replace(/\n/g,"<br>"); }
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),2400); }
+
+/* 西暦 → 令和（2019=令和元年） */
+function reiwa(y){ const n=Number(y)-2018; return n<=0?null:(n===1?"元":String(n)); }
+const YOBI=["日","月","火","水","木","金","土"];
+function fmtDateJP(iso, withYobi){
+  if(!iso) return "";
+  const [y,m,d]=iso.split("-").map(Number);
+  const r=reiwa(y);
+  const head = r ? `令和${r}年` : `${y}年`;
+  let s = `${head}${m}月${d}日`;
+  if(withYobi){ const w=new Date(y,m-1,d).getDay(); s+=`（${YOBI[w]}）`; }
+  return s;
+}
+function fmtTimeJP(hm){
+  if(!hm) return "";
+  let [h,mi]=hm.split(":").map(Number);
+  const ap = h<12 ? "午前":"午後";
+  let hh = h%12; if(hh===0) hh=12;
+  return `${ap} ${hh}時${String(mi).padStart(2,"0")}分`;
+}
+function fmtTimeShort(hm){ if(!hm) return ""; const [h,mi]=hm.split(":"); return `${Number(h)}時${mi}分`; }
+function fmtYen(v){
+  if(v===""||v==null) return "";
+  const n=Number(v); if(isNaN(n)) return String(v);
+  return n.toLocaleString("ja-JP") + "円";
+}
+
+function getKubun(){ return [...document.querySelectorAll('input[name="kubun"]:checked')].map(e=>e.value); }
+function setKubun(arr){
+  const a = arr||[];
+  document.querySelectorAll('input[name="kubun"]').forEach(e=> e.checked = a.includes(e.value));
+}
+function getAiteType(){ const e=document.querySelector('input[name="aite_type"]:checked'); return e?e.value:"得意先関係"; }
+function setAiteType(v){
+  document.querySelectorAll('input[name="aite_type"]').forEach(e=> e.checked = (e.value===(v||"得意先関係")));
+}
+function kubunText(o){
+  const list=(o.kubun||[]).map(k=> k==="その他" ? `その他（${o.kubun_other||""}）` : k);
+  return list.join("・");
+}
+function needKaijo(o){ return (o.kubun||[]).some(k=>KAIJO_TRIGGERS.includes(k)) && o.kaijo_use; }
+
+/* ---------- form <-> object ---------- */
+function readForm(){
+  const o={};
+  TEXT_FIELDS.forEach(f=> o[f]=$(f).value.trim());
+  CHECK_FIELDS.forEach(f=> o[f]=$(f).checked);
+  o.kubun=getKubun();
+  o.aite_type=getAiteType();
+  o.__id=$("editId").value||"";
+  return o;
+}
+function writeForm(o){
+  TEXT_FIELDS.forEach(f=> $(f).value = o[f]!=null?o[f]:"");
+  CHECK_FIELDS.forEach(f=> $(f).checked = !!o[f]);
+  setKubun(o.kubun); setAiteType(o.aite_type);
+  $("editId").value = o.__id || "";
+  syncCond();
+}
+function clearForm(keepMeta){
+  TEXT_FIELDS.forEach(f=>{ if(keepMeta && (f==="hokokubi"||f==="hokokusha")) return; $(f).value=""; });
+  CHECK_FIELDS.forEach(f=> $(f).checked = (f==="kaijo_use"));
+  setKubun([]); setAiteType("得意先関係");
+  $("editId").value="";
+  if(!keepMeta) $("hokokubi").value=todayStr();
+  syncCond();
+}
+
+/* ---------- 条件表示の同期 ---------- */
+function syncCond(){
+  const k=getKubun();
+  $("kubunOtherWrap").classList.toggle("show", k.includes("その他"));
+  const dogyo = k.includes("同業者へ乗り換え")||k.includes("同業者から返却")||getAiteType()==="同業者関係";
+  $("dogyoshaWrap").classList.toggle("show", dogyo);
+  const kaijo = k.some(v=>KAIJO_TRIGGERS.includes(v));
+  $("kaijoWrap").classList.toggle("show", kaijo);
+  // 解除申請の住所・名称の既定値
+  $("kaijo_addr").placeholder = $("jusho").value || "③の住所が自動で入ります";
+  $("kaijo_name").placeholder = $("aite_name").value || "③の氏名・団体名が自動で入ります";
+  const addr = $("kaijo_addr").value || $("jusho").value;
+  $("mapLink").href = addr ? "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(addr) : "#";
+}
+
+/* ---------- 清書 HTML ---------- */
+function buildDoc(o){
+  const uke = [fmtDateJP(o.uke_date,true), fmtTimeJP(o.uke_time)].filter(Boolean).join("　");
+  const renraku = [o.renraku_hoho, o.renraku_memo?`（${o.renraku_memo}）`:""].filter(Boolean).join("");
+  const taioTime = (o.taio_start||o.taio_end)
+    ? `${fmtTimeShort(o.taio_start)} 〜 ${fmtTimeShort(o.taio_end)}` : "";
+  const taio = [fmtDateJP(o.taio_date,true), taioTime].filter(Boolean).join("　");
+  const aiteLabel = o.aite_type==="同業者関係" ? "相 手 会 社" : "相 手 先";
+
+  const page1 = `
+  <div class="page">
+    <div class="topdate">${esc(fmtDateJP(o.hokokubi))}</div>
+    <div class="dh"><h2>顧 客 状 況 報 告 書</h2></div>
+    <div class="reporter">報告者 <span>${esc(o.hokokusha||"")}</span></div>
+    <table>
+      <tr>
+        <th>報告区分</th>
+        <td colspan="2"><span class="kubun-line">${esc(kubunText(o))||"—"}</span>
+          <span class="note">　／　${esc(o.aite_type||"")}</span></td>
+      </tr>
+      <tr><th>受 付 日 時</th><td colspan="2">${esc(uke)||"—"}</td></tr>
+      <tr><th>連絡の方法</th><td colspan="2">${esc(renraku)||"—"}</td></tr>
+      <tr>
+        <th>${aiteLabel}</th>
+        <td colspan="2" style="padding:0">
+          <table class="sub-t">
+            <tr><td class="k">氏名<br>団体名</td><td>
+              <div class="note">団体の場合は代表者職名・代表者名も記入</div>
+              <div>${esc(o.aite_name||"")}　${esc(o.aite_daihyo||"")}</div>
+              <div style="text-align:right">担当者名（${esc(o.aite_tanto||"")}）</div>
+            </td></tr>
+            <tr><td class="k">現場名</td><td>${esc(o.genba||"")}</td></tr>
+            <tr><td class="k">住所</td><td>${esc(o.jusho||"")}</td></tr>
+            <tr><td class="k">連絡先</td><td>${esc(o.renrakusaki||"")}</td></tr>
+            ${o.dogyosha?`<tr><td class="k" style="letter-spacing:0">同業者名</td><td>${esc(o.dogyosha)}</td></tr>`:""}
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <th>月 額 金 額</th>
+        <td colspan="2">
+          <span class="yen">${esc(fmtYen(o.getsugaku))||"—"}</span>
+          <span class="note">${o.getsugaku?"（税抜）／月":""}</span>
+          ${o.keiyaku_naiyo?`<span style="margin-left:8mm">${esc(o.keiyaku_naiyo)}</span>`:""}
+        </td>
+      </tr>
+      <tr><th>広 聴 内 容<br><span class="note" style="letter-spacing:0">（状況等）</span></th>
+        <td colspan="2" class="big">${nl2br(o.naiyo||"")}</td></tr>
+      <tr><th>営業の対応<br><span class="note" style="letter-spacing:0">担当（${esc(o.eigyo_tanto||"")}）</span></th>
+        <td colspan="2" class="big2">${nl2br(o.eigyo_taio||"")}</td></tr>
+      <tr><th>業務の対応<br><span class="note" style="letter-spacing:0">担当（${esc(o.gyomu_tanto||"")}）<br>部長（${esc(o.gyomu_bucho||"")}）</span></th>
+        <td colspan="2" class="big2">${nl2br(o.gyomu_taio||"")}</td></tr>
+      <tr><th class="n">車両</th>
+        <td colspan="2">車番（${esc(o.shaban||"")}）　運転手（${esc(o.driver||"")}）　同乗者（${esc(o.dojo1||"")}）　同乗者（${esc(o.dojo2||"")}）</td></tr>
+      <tr><th>対 応 日 時</th><td colspan="2">${esc(taio)||"—"}</td></tr>
+      <tr><th>備 考</th><td colspan="2" class="big2">${nl2br(o.biko||"")}</td></tr>
+    </table>
+    <div class="stamp">
+      <div class="memo">${o.keiyakusho_tenpu?"契約書（大泉衛生の）を添付・コピー":"&nbsp;"}</div>
+      <table>
+        <tr><th>担当者</th><th>事務員</th><th>業務責任者</th><th>営業責任者</th><th>管理責任者</th><th>会　長</th></tr>
+        <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      </table>
+    </div>
+  </div>`;
+
+  if(!needKaijo(o)) return `<div class="doc">${page1}</div>`;
+
+  const kAddr = o.kaijo_addr || o.jusho || "";
+  const kName = o.kaijo_name || o.aite_name || "";
+  const page2 = `
+  <div class="page">
+    <div class="juryo"><div class="h">受 領 印</div><div class="b"></div></div>
+    <div class="kutop"><span>${esc(o.ku||"")}</span> 区</div>
+    <div class="dh" style="margin-bottom:4mm"><h2 style="letter-spacing:.08em">契約解除登録申請書</h2></div>
+    <table>
+      <tr><th class="n" style="width:30mm">該当住所</th><td>${esc(kAddr)}</td></tr>
+      <tr><th class="n">名　　称</th><td>${esc(kName)}</td></tr>
+      <tr><th class="n">適用理由</th><td>
+        ${["廃業（閉店）","移転（解約）","停止（解約）","大阪市回収"]
+          .map(r=> o.tekiyo_riyu===r ? `<strong style="border:2px solid #111; padding:1px 8px; margin-right:10px; display:inline-block">${r}</strong>`
+                                     : `<span style="color:#999; margin-right:10px">${r}</span>`).join("")}
+      </td></tr>
+      <tr><th class="n">契約中止日</th><td>${esc(fmtDateJP(o.chushi_date))||"　"}
+        <span style="margin-left:14mm">${o.chushi_mikomi?"☑":"☐"} 見込み</span></td></tr>
+      <tr><th class="n">届出登録日</th><td>${esc(fmtDateJP(o.todokede_date))||"　"}</td></tr>
+    </table>
+    <table style="margin-top:4mm">
+      <tr><th class="n" style="width:30mm">登録業者名</th>
+        <td style="font-weight:700; font-size:13px">大泉衛生　株式会社　　　　印</td>
+        <th class="n" style="width:24mm">許可番号</th>
+        <td style="width:30mm; font-weight:700; text-align:center">003-123</td></tr>
+    </table>
+    <div class="cap">◎該当地図マーク</div>
+    <table><tr><td style="height:88mm; vertical-align:top">${nl2br(o.chizu_memo||"")}</td></tr></table>
+    <table style="margin-top:4mm"><tr><th class="n" style="width:24mm">備考欄</th><td style="height:16mm">${nl2br(o.biko||"")}</td></tr></table>
+  </div>`;
+
+  return `<div class="doc">${page1}${page2}</div>`;
+}
+function renderPrint(o){ $("printArea").innerHTML = buildDoc(o); }
+
+/* ---------- バリデーション ---------- */
+function validate(o){
+  const miss=[];
+  if(!o.hokokubi) miss.push("報告日");
+  if(!o.hokokusha) miss.push("報告者");
+  if(!o.kubun.length) miss.push("報告区分");
+  if(!o.aite_name) miss.push("氏名・団体名");
+  if(!o.naiyo) miss.push("広聴内容");
+  return miss;
+}
+
+/* ---------- 履歴 ---------- */
+function renderHist(){
+  const q=$("search").value.trim();
+  const list=load().filter(o=>{
+    if(!q) return true;
+    return JSON.stringify(o).includes(q);
+  });
+  const box=$("histList");
+  if(!list.length){ box.innerHTML=`<div class="empty">保存された報告書はありません</div>`; return; }
+  box.innerHTML=list.map(o=>`
+    <div class="hist-item">
+      <div class="t">${esc(o.aite_name||"（相手先未入力）")}
+        <span class="badge">${esc(kubunText(o))||"区分なし"}</span>
+        ${o.__sent?`<span class="badge sent">送信済</span>`:""}
+      </div>
+      <div class="m">${esc(fmtDateJP(o.hokokubi))}　報告者：${esc(o.hokokusha||"—")}</div>
+      <div class="m">${esc(o.genba||o.jusho||"")}</div>
+      <div class="mini">
+        <button data-act="edit" data-id="${o.__id}">編集</button>
+        <button data-act="print" data-id="${o.__id}">印刷</button>
+        <button data-act="preview" data-id="${o.__id}">表示</button>
+        <button data-act="copy" data-id="${o.__id}">複製</button>
+        <button class="danger" data-act="del" data-id="${o.__id}">削除</button>
+      </div>
+    </div>`).join("");
+}
+
+/* ---------- プレビュー ---------- */
+function openPreview(o){
+  const html = buildDoc(o);
+  const css = document.querySelector("style").textContent;
+  const w=window.open("","_blank");
+  if(!w){ toast("ポップアップがブロックされました"); return; }
+  w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>顧客状況報告書</title><style>${css}
+    body{background:#eef1f5; padding:16px}
+    #printArea{position:static; left:0}
+    .doc{background:#fff; padding:14mm 15mm; box-shadow:0 2px 12px rgba(0,0,0,.12); max-width:100%}
+    .bar{position:sticky; top:0; text-align:center; margin-bottom:14px}
+    @media print{ .bar{display:none} body{background:#fff; padding:0} .doc{box-shadow:none; padding:0} }
+    </style></head>
+    <body><div class="bar"><button onclick="window.print()">🖨 印刷 / PDF保存</button></div>${html}</body></html>`);
+  w.document.close();
+}
+
+/* ---------- GAS 送信 ---------- */
+async function sendToSoumu(o){
+  if(!GAS_URL){ toast("送信先が未設定です（HTML先頭の GAS_URL を設定してください）"); return false; }
+  const btn=$("btnSend"); btn.disabled=true; btn.textContent="送信中…";
+  try{
+    const payload = Object.assign({}, o, {
+      key: SEND_KEY,
+      kubun_text: kubunText(o),
+      doc_html: buildDoc(o),
+      sent_at: new Date().toISOString()
+    });
+    const res = await fetch(GAS_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body: JSON.stringify(payload)
+    });
+    const txt = await res.text();
+    let ok=false; try{ ok = JSON.parse(txt).ok===true; }catch(e){ ok = res.ok; }
+    if(!ok) throw new Error(txt.slice(0,120));
+    toast("総務へ送信しました");
+    return true;
+  }catch(err){
+    toast("送信に失敗しました：" + err.message);
+    return false;
+  }finally{
+    btn.disabled=false; btn.textContent="📤 総務へ送信";
+  }
+}
+
+/* ---------- 保存 ---------- */
+function doSave(o, silent){
+  const miss=validate(o);
+  if(miss.length){ toast("未入力：" + miss.join("・")); return null; }
+  const list=load();
+  if(o.__id){
+    const i=list.findIndex(x=>x.__id===o.__id);
+    if(i>=0){ o.__sent = list[i].__sent; list[i]=o; } else list.unshift(o);
+  }else{
+    o.__id = "r" + Date.now() + Math.floor(Math.random()*1000);
+    list.unshift(o);
+  }
+  saveAll(list); renderHist(); $("editId").value=o.__id;
+  if(!silent) toast("履歴に保存しました");
+  return o;
+}
+function markSent(id){
+  const list=load(); const i=list.findIndex(x=>x.__id===id);
+  if(i>=0){ list[i].__sent=true; saveAll(list); renderHist(); }
+}
+
+/* ---------- イベント ---------- */
+$("kubunBox").addEventListener("change", syncCond);
+document.querySelectorAll('input[name="aite_type"]').forEach(e=>e.addEventListener("change", syncCond));
+$("jusho").addEventListener("input", syncCond);
+$("aite_name").addEventListener("input", syncCond);
+$("kaijo_addr").addEventListener("input", syncCond);
+
+$("btnSave").addEventListener("click", ()=>{ doSave(readForm()); });
+$("btnPreview").addEventListener("click", ()=>{ openPreview(readForm()); });
+$("btnPrint").addEventListener("click", ()=>{ renderPrint(readForm()); window.print(); });
+$("btnClear").addEventListener("click", ()=>{ if(confirm("入力内容をクリアしますか？")) clearForm(true); });
+$("btnNew").addEventListener("click", ()=>{ clearForm(false); window.scrollTo({top:0,behavior:"smooth"}); });
+$("btnSend").addEventListener("click", async ()=>{
+  const o=doSave(readForm(), true);
+  if(!o) return;
+  const ok=await sendToSoumu(o);
+  if(ok) markSent(o.__id);
+});
+
+$("search").addEventListener("input", renderHist);
+$("histList").addEventListener("click", e=>{
+  const b=e.target.closest("button[data-act]"); if(!b) return;
+  const act=b.dataset.act, id=b.dataset.id;
+  const list=load(); const o=list.find(x=>x.__id===id); if(!o) return;
+  if(act==="edit"){ writeForm(o); window.scrollTo({top:0,behavior:"smooth"}); }
+  if(act==="print"){ renderPrint(o); window.print(); }
+  if(act==="preview"){ openPreview(o); }
+  if(act==="copy"){ const c=JSON.parse(JSON.stringify(o)); delete c.__id; delete c.__sent; c.hokokubi=todayStr(); writeForm(c); toast("複製しました（保存で新規登録）"); window.scrollTo({top:0,behavior:"smooth"}); }
+  if(act==="del"){ if(confirm("この報告書を削除しますか？")){ saveAll(list.filter(x=>x.__id!==id)); renderHist(); toast("削除しました"); } }
+});
+
+$("btnExport").addEventListener("click", ()=>{
+  const blob=new Blob([JSON.stringify(load(),null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`顧客状況報告書_バックアップ_${todayStr()}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+});
+$("btnImport").addEventListener("click", ()=> $("importFile").click());
+$("importFile").addEventListener("change", e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const inc=JSON.parse(r.result);
+      if(!Array.isArray(inc)) throw new Error("形式が違います");
+      const cur=load(); const ids=new Set(cur.map(x=>x.__id));
+      inc.forEach(x=>{ if(!ids.has(x.__id)) cur.push(x); });
+      saveAll(cur); renderHist(); toast(`取込しました（${inc.length}件）`);
+    }catch(err){ toast("取込に失敗：" + err.message); }
+    e.target.value="";
+  };
+  r.readAsText(f);
+});
+
+/* ---------- 起動 ---------- */
+(function init(){
+  clearForm(false);
+  $("uke_date").value = todayStr();
+  renderHist();
+  if(!GAS_URL){
+    $("btnSend").disabled = true;
+    $("btnSend").title = "GAS_URL が未設定です";
+    $("sendHint").innerHTML = '＊ の項目は入力必須です。<br><strong style="color:#b4451f">「総務へ送信」は未設定です。</strong>このHTMLの先頭にある <code>GAS_URL</code> にウェブアプリURLを貼ると有効になります（設定するまでは 印刷／PDF で運用できます）。';
+  }
+})();
+</script>
+</body>
+</html>

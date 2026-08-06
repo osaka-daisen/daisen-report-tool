@@ -74,6 +74,7 @@
 
   .cond{display:none !important}
   .cond.show{display:block !important}
+  .grid.cond.show{display:grid !important}
   .notice{
     font-size:12px; background:#fff7ed; border:1px solid #f0d5b8; color:#8a5220;
     padding:8px 11px; border-radius:8px; margin-bottom:10px;
@@ -373,15 +374,18 @@
             </div>
           </fieldset>
 
-          <fieldset class="cond" id="kaijoWrap">
+          <fieldset id="kaijoWrap">
             <legend>⑧ 契約解除登録申請書（別紙・大阪市提出用）</legend>
-            <div class="notice" id="kaijoNotice">
-              閉店・移転・中止を選んだので、<strong>大阪市の区へ出す「契約解除登録申請書」</strong>も同じ入力から自動で作ります。不要なら下のチェックを外してください。
-            </div>
-            <label class="inline-check" style="margin-bottom:10px">
-              <input type="checkbox" id="kaijo_use" checked>契約解除登録申請書を一緒に出力する
+            <label class="inline-check" style="margin-bottom:8px">
+              <input type="checkbox" id="kaijo_use">契約解除登録申請書も一緒に作成する
             </label>
-            <div class="grid">
+            <div class="notice" style="margin-bottom:10px">
+              ※ <strong>大阪市の顧客のみ</strong>です。堺市など大阪市外の顧客は対象外なのでチェック不要です。
+            </div>
+            <div class="notice cond" id="kaijoRemind" style="margin-bottom:10px">
+              閉店・移転・中止が選ばれています。<strong>大阪市の顧客ならチェックを入れてください。</strong>
+            </div>
+            <div class="grid cond" id="kaijoFields">
               <label class="field">
                 <span class="lab">区（大阪市）</span>
                 <select id="ku">
@@ -421,16 +425,9 @@
                 <span class="lab">届出登録日</span>
                 <input type="date" id="todokede_date">
               </label>
-              <label class="field full">
-                <span class="lab">地図欄メモ（目印・道路名など。地図は印刷後に貼付／手描き）</span>
-                <textarea id="chizu_memo" placeholder="例）〇〇通り沿い、△△薬局の隣" style="min-height:50px"></textarea>
-              </label>
-              <label class="field full">
-                <span class="lab">Googleマップ確認</span>
-                <a id="mapLink" href="#" target="_blank" rel="noopener"
-                   style="display:inline-block; padding:9px 12px; border:1px solid var(--line); border-radius:8px; text-decoration:none; color:var(--accent-d); font-weight:600; font-size:13px">
-                  🗺 住所を地図で開く</a>
-              </label>
+              <div class="field full" style="font-size:12px; color:var(--sub)">
+                ◎該当地図マーク欄は、印刷した申請書に地図を貼り付けられるよう<strong>空欄のまま</strong>出力します。
+              </div>
             </div>
           </fieldset>
 
@@ -497,7 +494,7 @@ const TEXT_FIELDS = [
   "getsugaku","keiyaku_naiyo",
   "naiyo","eigyo_tanto","eigyo_taio","gyomu_tanto","gyomu_bucho","gyomu_taio",
   "shaban","driver","dojo1","dojo2","taio_date","taio_start","taio_end",
-  "ku","tekiyo_riyu","kaijo_addr","kaijo_name","chushi_date","todokede_date","chizu_memo","biko"
+  "ku","tekiyo_riyu","kaijo_addr","kaijo_name","chushi_date","todokede_date","biko"
 ];
 const CHECK_FIELDS = ["chushi_mikomi","keiyakusho_tenpu","kaijo_use"];
 const KAIJO_TRIGGERS = ["閉店・廃業","移転","中止・停止"];
@@ -551,7 +548,8 @@ function kubunText(o){
   const list=(o.kubun||[]).map(k=> k==="その他" ? `その他（${o.kubun_other||""}）` : k);
   return list.join("・");
 }
-function needKaijo(o){ return (o.kubun||[]).some(k=>KAIJO_TRIGGERS.includes(k)) && o.kaijo_use; }
+/* 契約解除登録申請書はチェックが入っているときだけ作る（大阪市の顧客のみ） */
+function needKaijo(o){ return !!o.kaijo_use; }
 
 /* ---------- form <-> object ---------- */
 function readForm(){
@@ -572,7 +570,7 @@ function writeForm(o){
 }
 function clearForm(keepMeta){
   TEXT_FIELDS.forEach(f=>{ if(keepMeta && (f==="hokokubi"||f==="hokokusha")) return; $(f).value=""; });
-  CHECK_FIELDS.forEach(f=> $(f).checked = (f==="kaijo_use"));
+  CHECK_FIELDS.forEach(f=> $(f).checked = false);
   setKubun([]); setAiteType("得意先関係");
   $("editId").value="";
   if(!keepMeta) $("hokokubi").value=todayStr();
@@ -585,13 +583,13 @@ function syncCond(){
   $("kubunOtherWrap").classList.toggle("show", k.includes("その他"));
   const dogyo = k.includes("同業者へ乗り換え")||k.includes("同業者から返却")||getAiteType()==="同業者関係";
   $("dogyoshaWrap").classList.toggle("show", dogyo);
-  const kaijo = k.some(v=>KAIJO_TRIGGERS.includes(v));
-  $("kaijoWrap").classList.toggle("show", kaijo);
+  // 契約解除登録申請書はチェックで開く。閉店・移転・中止のときだけ入れ忘れ防止の案内を出す
+  const on = $("kaijo_use").checked;
+  $("kaijoFields").classList.toggle("show", on);
+  $("kaijoRemind").classList.toggle("show", !on && k.some(v=>KAIJO_TRIGGERS.includes(v)));
   // 解除申請の住所・名称の既定値
   $("kaijo_addr").placeholder = $("jusho").value || "③の住所が自動で入ります";
   $("kaijo_name").placeholder = $("aite_name").value || "③の氏名・団体名が自動で入ります";
-  const addr = $("kaijo_addr").value || $("jusho").value;
-  $("mapLink").href = addr ? "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(addr) : "#";
 }
 
 /* ---------- 清書 HTML ---------- */
@@ -688,7 +686,7 @@ function buildDoc(o){
         <td style="width:30mm; font-weight:700; text-align:center">003-123</td></tr>
     </table>
     <div class="cap">◎該当地図マーク</div>
-    <table><tr><td style="height:88mm; vertical-align:top">${nl2br(o.chizu_memo||"")}</td></tr></table>
+    <table><tr><td style="height:88mm"></td></tr></table>
     <table style="margin-top:4mm"><tr><th class="n" style="width:24mm">備考欄</th><td style="height:16mm">${nl2br(o.biko||"")}</td></tr></table>
   </div>`;
 
@@ -826,6 +824,7 @@ function markSent(id){
 /* ---------- イベント ---------- */
 $("kubunBox").addEventListener("change", syncCond);
 document.querySelectorAll('input[name="aite_type"]').forEach(e=>e.addEventListener("change", syncCond));
+$("kaijo_use").addEventListener("change", syncCond);
 $("jusho").addEventListener("input", syncCond);
 $("aite_name").addEventListener("input", syncCond);
 $("kaijo_addr").addEventListener("input", syncCond);

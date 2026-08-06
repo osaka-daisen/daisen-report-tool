@@ -44,7 +44,7 @@ var HEADERS = [
   '広聴内容',
   '営業担当', '営業の対応', '業務担当', '業務部長', '業務の対応',
   '車番', '運転手', '同乗者1', '同乗者2', '対応日', '対応開始', '対応終了',
-  '解除申請', '区', '適用理由', '該当住所', '名称', '契約中止日', '見込み', '届出登録日', '地図メモ',
+  '解除申請', '区', '適用理由', '該当住所', '名称', '契約中止日', '見込み', '届出登録日',
   '備考', '契約書添付', 'PDF'
 ];
 
@@ -125,18 +125,16 @@ function appendRow(d, now, pdfUrl) {
     d.eigyo_tanto || '', d.eigyo_taio || '', d.gyomu_tanto || '', d.gyomu_bucho || '', d.gyomu_taio || '',
     d.shaban || '', d.driver || '', d.dojo1 || '', d.dojo2 || '',
     d.taio_date || '', d.taio_start || '', d.taio_end || '',
-    yn(d.kaijo_use && needKaijoServer(d)), d.ku || '', d.tekiyo_riyu || '',
+    yn(d.kaijo_use), d.ku || '', d.tekiyo_riyu || '',
     d.kaijo_addr || d.jusho || '', d.kaijo_name || d.aite_name || '',
-    d.chushi_date || '', yn(d.chushi_mikomi), d.todokede_date || '', d.chizu_memo || '',
+    d.chushi_date || '', yn(d.chushi_mikomi), d.todokede_date || '',
     d.biko || '', yn(d.keiyakusho_tenpu), pdfUrl
   ]);
 }
 
+/* 契約解除登録申請書はチェックが入っているときだけ（大阪市の顧客のみ） */
 function needKaijoServer(d) {
-  var trig = ['閉店・廃業', '移転', '中止・停止'];
-  var k = d.kubun || [];
-  for (var i = 0; i < k.length; i++) if (trig.indexOf(k[i]) >= 0) return true;
-  return false;
+  return !!d.kaijo_use;
 }
 
 function yenText(d) {

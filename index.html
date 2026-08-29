@@ -148,6 +148,34 @@
   .doc .kutop{text-align:right; font-size:12px; margin-bottom:3mm}
   .doc .kutop span{border-bottom:1px solid #111; display:inline-block; min-width:28mm; text-align:center}
 
+  /* ===== 契約解除登録申請書（大阪市提出用）=====
+     原本 OneDrive\Desktop\契約解除登録申請書（Excel版）2026.xlsx と同じ様式。
+     5列（A17.91 / B〜E17.27）＝ほぼ等幅、行高22.5pt（受領印の枠だけ33.75pt）。
+     原本もA4に収めるとき縮小されるので、はみ出しは fitPages に任せる */
+  .doc .kj{
+    width:174mm; margin:0 auto; border-collapse:collapse; table-layout:fixed;
+    font-family:"ＭＳ Ｐゴシック","MS PGothic","Hiragino Kaku Gothic ProN",sans-serif;
+  }
+  .doc .kj td{border:none; padding:0 2mm; vertical-align:middle; font-size:14pt; line-height:1.15;
+    white-space:nowrap; overflow:hidden}
+  .doc .kj td.bx{border:1px solid #111}
+  .doc .kj td.tb{border-top:1px solid #111; border-bottom:1px solid #111}
+  .doc .kj .c{text-align:center}
+  .doc .kj .l{text-align:left}
+  .doc .kj .r{text-align:right}
+  .doc .kj .f18{font-size:18pt}
+  .doc .kj .f12{font-size:12pt}
+  .doc .kj .cap12{font-size:12pt; padding:0}
+  /* 適用理由は該当するものを丸で囲む（原本は手書きで○を付ける欄） */
+  /* 該当する理由を丸で囲む。枠は疑似要素で重ねるだけなので、
+     文字の折り返しや列幅に影響しない（原本は手書きの○） */
+  .doc .kj .maru{position:relative; display:inline-block}
+  .doc .kj .maru::after{
+    content:""; position:absolute; left:-2.5mm; right:-2.5mm; top:-1.2mm; bottom:-1.2mm;
+    border:2px solid #111; border-radius:50%; pointer-events:none;
+  }
+  .doc .kj .box{border:1px solid #111}
+
   .hint{font-size:12px; color:var(--sub); margin-top:8px}
   .toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px);
@@ -512,6 +540,24 @@ function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("sho
 /* 西暦 → 令和（2019=令和元年） */
 function reiwa(y){ const n=Number(y)-2018; return n<=0?null:(n===1?"元":String(n)); }
 const YOBI=["日","月","火","水","木","金","土"];
+/* ---------- 契約解除登録申請書（原本の様式にあわせる） ---------- */
+const RIYU = ["廃業（閉店）","移転（解約）",
+              "停止（解約）","大阪市回収"];
+
+/* 原本は「　令和　　　　　　年　…月　…日」と全角6つ分ずつ空いている。
+   値があるときは、その空きの真ん中に数字を置いて桁ずれを防ぐ */
+function wareki(iso){
+  const g = (v) => {
+    const t = (v == null ? "" : String(v));
+    const pad = Math.max(0, 6 - t.length), l = Math.floor(pad/2);
+    return "　".repeat(l) + t + "　".repeat(pad - l);
+  };
+  if(!iso) return "　令和" + g("") + "年" + g("") + "月" + g("") + "日";
+  const [y,m,d] = iso.split("-").map(Number);
+  const r = reiwa(y);
+  return "　令和" + g(r || y) + "年" + g(m) + "月" + g(d) + "日";
+}
+
 function fmtDateJP(iso, withYobi){
   if(!iso) return "";
   const [y,m,d]=iso.split("-").map(Number);
@@ -664,30 +710,58 @@ function buildDoc(o){
   const kName = o.kaijo_name || o.aite_name || "";
   const page2 = `
   <div class="page">
-    <div class="juryo"><div class="h">受 領 印</div><div class="b"></div></div>
-    <div class="kutop"><span>${esc(o.ku||"")}</span> 区</div>
-    <div class="dh" style="margin-bottom:4mm"><h2 style="letter-spacing:.08em">契約解除登録申請書</h2></div>
-    <table>
-      <tr><th class="n" style="width:30mm">該当住所</th><td>${esc(kAddr)}</td></tr>
-      <tr><th class="n">名　　称</th><td>${esc(kName)}</td></tr>
-      <tr><th class="n">適用理由</th><td>
-        ${["廃業（閉店）","移転（解約）","停止（解約）","大阪市回収"]
-          .map(r=> o.tekiyo_riyu===r ? `<strong style="border:2px solid #111; padding:1px 8px; margin-right:10px; display:inline-block">${r}</strong>`
-                                     : `<span style="color:#999; margin-right:10px">${r}</span>`).join("")}
-      </td></tr>
-      <tr><th class="n">契約中止日</th><td>${esc(fmtDateJP(o.chushi_date))||"　"}
-        <span style="margin-left:14mm">${o.chushi_mikomi?"☑":"☐"} 見込み</span></td></tr>
-      <tr><th class="n">届出登録日</th><td>${esc(fmtDateJP(o.todokede_date))||"　"}</td></tr>
+    <table class="kj">
+      <colgroup><col style="width:20.6%"><col style="width:19.85%"><col style="width:19.85%"><col style="width:19.85%"><col style="width:19.85%"></colgroup>
+      <tr style="height:7.9mm">
+        <td class="bx c">受　領　印</td>
+        <td colspan="3"></td>
+        <td class="r">${esc(o.ku||"")}　区</td>
+      </tr>
+      <tr style="height:11.9mm"><td class="bx" rowspan="2"></td><td colspan="4"></td></tr>
+      <tr style="height:11.9mm"><td colspan="4"></td></tr>
+      <tr style="height:7.9mm"><td colspan="5" class="c f18">契約解除登録申請書</td></tr>
+      <tr style="height:7.9mm">
+        <td class="bx c">該当住所</td>
+        <td class="bx l" colspan="4">${esc(kAddr)}</td>
+      </tr>
+      <tr style="height:7.9mm">
+        <td class="bx c">名　　　称</td>
+        <td class="bx c" colspan="4">${esc(kName)}</td>
+      </tr>
+      <tr style="height:7.9mm">
+        <td class="bx c">適用理由</td>
+        ${RIYU.map(r => `<td class="bx c">${o.tekiyo_riyu===r ? `<span class="maru">${r}</span>` : r}</td>`).join("")}
+      </tr>
+      <tr style="height:7.9mm">
+        <td class="bx c">契約中止日</td>
+        <td class="bx l" colspan="4">${wareki(o.chushi_date)}　　　　　${o.chushi_mikomi?"☑":"□"}見込み</td>
+      </tr>
+      <tr style="height:7.9mm">
+        <td class="bx c">届出登録日</td>
+        <td class="bx l" colspan="4">${wareki(o.todokede_date)}</td>
+      </tr>
+      <tr style="height:7.9mm"><td colspan="5"></td></tr>
+      <tr style="height:7.9mm">
+        <td class="bx c">届出業者名</td>
+        <td class="bx r" colspan="2">大泉衛生株式会社　　　　　㊞</td>
+        <td class="bx c">許可番号</td>
+        <td class="bx c">００３-１２３</td>
+      </tr>
+      <tr style="height:7.9mm">
+        <td colspan="5" class="cap12">◎該当地図マーク（住宅地図もしくは境界線が明確な地図をご使用下さい）</td>
+      </tr>
+      <tr style="height:174.7mm">
+        <td colspan="5" class="box c f18" style="vertical-align:middle">地　　図　　添　　付</td>
+      </tr>
+      <tr style="height:7.9mm">
+        <td class="bx c f12">備　考　欄</td>
+        <td colspan="4" class="f12" style="border-top:1px solid #111; border-right:1px solid #111; vertical-align:top">${nl2br(o.biko||"")}</td>
+      </tr>
+      <tr style="height:7.9mm">
+        <td style="border-left:1px solid #111; border-bottom:1px solid #111"></td>
+        <td colspan="4" style="border-bottom:1px solid #111; border-right:1px solid #111"></td>
+      </tr>
     </table>
-    <table style="margin-top:4mm">
-      <tr><th class="n" style="width:30mm">登録業者名</th>
-        <td style="font-weight:700; font-size:13px">大泉衛生　株式会社　　　　印</td>
-        <th class="n" style="width:24mm">許可番号</th>
-        <td style="width:30mm; font-weight:700; text-align:center">003-123</td></tr>
-    </table>
-    <div class="cap">◎該当地図マーク</div>
-    <table><tr><td style="height:88mm"></td></tr></table>
-    <table style="margin-top:4mm"><tr><th class="n" style="width:24mm">備考欄</th><td style="height:16mm">${nl2br(o.biko||"")}</td></tr></table>
   </div>`;
 
   return `<div class="doc">${page1}${page2}</div>`;

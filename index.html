@@ -163,6 +163,8 @@
   .doc .kj .c{text-align:center}
   .doc .kj .l{text-align:left}
   .doc .kj .r{text-align:right}
+  .doc .kj .kuname{display:inline-block; width:22mm; text-align:center}
+  .doc .kj .kurest{margin-left:3mm}
   .doc .kj .f18{font-size:18pt}
   .doc .kj .f12{font-size:12pt}
   .doc .kj .cap12{font-size:12pt; padding:0}
@@ -546,6 +548,18 @@ const RIYU = ["廃業（閉店）","移転（解約）",
 
 /* 原本は「　令和　　　　　　年　…月　…日」と全角6つ分ずつ空いている。
    値があるときは、その空きの真ん中に数字を置いて桁ずれを防ぐ */
+/* 原本の該当住所は「〇〇［区］〇〇町1-2-3」と、印字された「区」の前後に分けて書く様式。
+   住所を区で切って、「区」が二重に出ないようにする。
+   大阪市提出用なので、頭の「大阪府」「大阪市」は落とす */
+function splitKuAddr(addr, kuHint){
+  const a = String(addr || "").trim()
+    .replace(/^\s*(東京都|北海道|.{2,3}[府県])\s*/, "")   // 都道府県を落とす
+    .replace(/^\s*.{1,6}市\s*/, "");                      // 市を落とす（大阪市提出用なので市名は不要）
+  const m = a.match(/^(.*?)区(.*)$/);
+  if(m) return { ku: m[1].trim(), rest: m[2].trim() };
+  return { ku: String(kuHint || "").replace(/区$/, "").trim(), rest: a };
+}
+
 function wareki(iso){
   const g = (v) => {
     const t = (v == null ? "" : String(v));
@@ -708,6 +722,7 @@ function buildDoc(o){
 
   const kAddr = o.kaijo_addr || o.jusho || "";
   const kName = o.kaijo_name || o.aite_name || "";
+  const ka = splitKuAddr(kAddr, o.ku);
   const page2 = `
   <div class="page">
     <table class="kj">
@@ -722,7 +737,7 @@ function buildDoc(o){
       <tr style="height:7.9mm"><td colspan="5" class="c f18">契約解除登録申請書</td></tr>
       <tr style="height:7.9mm">
         <td class="bx c">該当住所</td>
-        <td class="bx l" colspan="4">${esc(kAddr)}</td>
+        <td class="bx l" colspan="4"><span class="kuname">${esc(ka.ku)}</span>区<span class="kurest">${esc(ka.rest)}</span></td>
       </tr>
       <tr style="height:7.9mm">
         <td class="bx c">名　　　称</td>

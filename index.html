@@ -50,7 +50,8 @@
   }
   .grid{display:grid; grid-template-columns:1fr 1fr; gap:10px 12px}
   .grid .full{grid-column:1 / -1}
-  @media (max-width:520px){ .grid{grid-template-columns:1fr} }
+  .grid.c3{grid-template-columns:1fr 1fr 1fr}
+  @media (max-width:520px){ .grid, .grid.c3{grid-template-columns:1fr} }
   label.field{display:block}
   label.field .lab{display:block; font-size:12px; color:var(--sub); margin-bottom:4px; font-weight:600}
   label.field .req{color:var(--warn); font-weight:700; margin-left:3px}
@@ -60,6 +61,7 @@
   }
   input:focus,select:focus,textarea:focus{outline:2px solid #bfe0d6; border-color:var(--accent)}
   textarea{resize:vertical; min-height:70px}
+  textarea.tall{min-height:150px}
 
   /* 区分チェック */
   .checks{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:6px}
@@ -71,6 +73,16 @@
   .checks input{width:auto; margin:0; flex:none; accent-color:var(--accent)}
   .inline-check{display:flex; align-items:center; gap:7px; font-size:13px; margin-top:6px}
   .inline-check input{width:auto; margin:0; accent-color:var(--accent)}
+
+  /* 帳票名プレビュー */
+  .titlechip{
+    margin-top:10px; font-size:12px; color:var(--sub);
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .titlechip b{
+    font-size:13px; color:var(--accent-d); background:var(--chip);
+    border:1px solid #bfe0d6; border-radius:8px; padding:4px 12px; font-weight:700;
+  }
 
   .cond{display:none !important}
   .cond.show{display:block !important}
@@ -128,6 +140,14 @@
   .doc th.n{letter-spacing:0}
   .doc td.big{height:24mm}
   .doc td.big2{height:19mm}
+  /* 広聴内容＋対応を1枠に統合したぶん、従来3段分の高さをまとめて確保。
+     担当の行は枠の下端に寄せる（本文が長いときは押し下げられる） */
+  .doc td.bigall{height:62mm; padding:0}
+  .doc .cellflex{display:flex; flex-direction:column; justify-content:space-between; min-height:60mm; padding:4px 7px}
+  .doc .tantoline{
+    margin-top:3mm; padding-top:1.5mm; border-top:1px dotted #777;
+    font-size:11px; color:#111;
+  }
   .doc .sub-t{width:100%; border-collapse:collapse}
   .doc .sub-t td{border:none; border-bottom:1px dotted #777; padding:3px 5px}
   .doc .sub-t tr:last-child td{border-bottom:none}
@@ -234,9 +254,10 @@
           <fieldset>
             <legend>① 報告区分（複数選択可）<span class="req">*</span></legend>
             <div class="checks" id="kubunBox">
-              <label><input type="checkbox" name="kubun" value="閉店・廃業">閉店・廃業</label>
+              <label><input type="checkbox" name="kubun" value="中止">中止</label>
+              <label><input type="checkbox" name="kubun" value="休止">休止</label>
               <label><input type="checkbox" name="kubun" value="移転">移転</label>
-              <label><input type="checkbox" name="kubun" value="中止・停止">中止・停止</label>
+              <label><input type="checkbox" name="kubun" value="請求先変更">請求先変更</label>
               <label><input type="checkbox" name="kubun" value="管理会社変更">管理会社変更</label>
               <label><input type="checkbox" name="kubun" value="同業者へ乗り換え">同業者へ乗り換え</label>
               <label><input type="checkbox" name="kubun" value="同業者から返却">同業者から返却</label>
@@ -245,10 +266,15 @@
               <label><input type="checkbox" name="kubun" value="トラブル">トラブル</label>
               <label><input type="checkbox" name="kubun" value="その他">その他</label>
             </div>
+            <div class="hint" style="margin-top:6px">「中止」は閉店・廃業・停止をまとめた区分です。</div>
             <label class="field cond" id="kubunOtherWrap" style="margin-top:8px">
               <span class="lab">その他（内容）</span>
               <input type="text" id="kubun_other" placeholder="区分の内容を入力">
             </label>
+            <div class="titlechip">
+              この内容で出力される帳票名 → <b id="titlePrev">顧客状況報告書</b>
+              <span id="titleNote"></span>
+            </div>
             <div style="margin-top:10px">
               <span class="lab" style="display:block; font-size:12px; color:var(--sub); font-weight:600; margin-bottom:4px">相手先の種別</span>
               <div class="checks" style="grid-template-columns:1fr 1fr">
@@ -332,46 +358,28 @@
           </fieldset>
 
           <fieldset>
-            <legend>④ 広聴内容（状況等）<span class="req">*</span></legend>
-            <label class="field full">
-              <textarea id="naiyo" placeholder="いつ・誰から・何を言われたか／どういう状況かを事実ベースで"></textarea>
+            <legend>④ 広聴内容・対応（状況等）<span class="req">*</span></legend>
+            <label class="field full" style="margin-bottom:10px">
+              <textarea id="naiyo" class="tall" placeholder="いつ・誰から・何を言われたか／どういう状況か／営業・業務がどう対応したかを、まとめて事実ベースで"></textarea>
             </label>
-          </fieldset>
-
-          <fieldset>
-            <legend>⑤ 営業の対応</legend>
-            <div class="grid">
+            <div class="grid c3">
               <label class="field">
-                <span class="lab">担当</span>
+                <span class="lab">営業 担当</span>
                 <input type="text" id="eigyo_tanto" placeholder="例）木村">
               </label>
-              <label class="field full">
-                <span class="lab">対応内容</span>
-                <textarea id="eigyo_taio" placeholder="現地確認・引き止め交渉・謝罪 等"></textarea>
-              </label>
-            </div>
-          </fieldset>
-
-          <fieldset>
-            <legend>⑥ 業務の対応</legend>
-            <div class="grid">
               <label class="field">
-                <span class="lab">担当</span>
+                <span class="lab">業務 担当</span>
                 <input type="text" id="gyomu_tanto" placeholder="例）田中">
               </label>
               <label class="field">
                 <span class="lab">部長</span>
                 <input type="text" id="gyomu_bucho" placeholder="例）〇〇">
               </label>
-              <label class="field full">
-                <span class="lab">対応内容</span>
-                <textarea id="gyomu_taio" placeholder="収集ルート変更・容器回収 等"></textarea>
-              </label>
             </div>
           </fieldset>
 
           <fieldset>
-            <legend>⑦ 車両・対応日時</legend>
+            <legend>⑤ 車両・対応日時</legend>
             <div class="grid">
               <label class="field">
                 <span class="lab">車番</span>
@@ -405,7 +413,7 @@
           </fieldset>
 
           <fieldset id="kaijoWrap">
-            <legend>⑧ 契約解除登録申請書（別紙・大阪市提出用）</legend>
+            <legend>⑥ 契約解除登録申請書（別紙・大阪市提出用）</legend>
             <label class="inline-check" style="margin-bottom:8px">
               <input type="checkbox" id="kaijo_use">契約解除登録申請書も一緒に作成する
             </label>
@@ -413,7 +421,7 @@
               ※ <strong>大阪市の顧客のみ</strong>です。堺市など大阪市外の顧客は対象外なのでチェック不要です。
             </div>
             <div class="notice cond" id="kaijoRemind" style="margin-bottom:10px">
-              閉店・移転・中止が選ばれています。<strong>大阪市の顧客ならチェックを入れてください。</strong>
+              中止・移転が選ばれています。<strong>大阪市の顧客ならチェックを入れてください。</strong>
             </div>
             <div class="grid cond" id="kaijoFields">
               <label class="field">
@@ -485,7 +493,7 @@
           </fieldset>
 
           <fieldset>
-            <legend>⑨ 備考・添付</legend>
+            <legend>⑦ 備考・添付</legend>
             <label class="field full">
               <textarea id="biko" placeholder="連絡事項・特記事項など"></textarea>
             </label>
@@ -545,15 +553,75 @@ const TEXT_FIELDS = [
   "uke_date","uke_time","renraku_hoho","renraku_memo",
   "aite_name","aite_daihyo","aite_tanto","renrakusaki","genba","jusho","dogyosha",
   "getsugaku","keiyaku_naiyo",
-  "naiyo","eigyo_tanto","eigyo_taio","gyomu_tanto","gyomu_bucho","gyomu_taio",
+  "naiyo","eigyo_tanto","gyomu_tanto","gyomu_bucho",
   "shaban","driver","dojo1","dojo2","taio_date","taio_start","taio_end",
   "ku","tekiyo_riyu","kaijo_addr","kaijo_name","chushi_date","todokede_date","biko"
 ];
 const CHECK_FIELDS = ["chushi_mikomi","keiyakusho_tenpu","kaijo_use"];
-const KAIJO_TRIGGERS = ["閉店・廃業","移転","中止・停止"];
+/* 契約解除登録申請書の入れ忘れ案内を出す区分（大阪市提出が絡むもの） */
+const KAIJO_TRIGGERS = ["中止","移転"];
+
+/* ---------- 帳票名 ----------
+   選んだ報告区分のうち「最初の1つ」で帳票名が決まる。
+   例）中止 → 中止報告書 ／ 休止 → 休止報告書 ／ 請求先変更 → 請求先変更報告書 */
+const DOC_TITLE = {
+  "中止":"中止報告書",
+  "休止":"休止報告書",
+  "移転":"移転報告書",
+  "請求先変更":"請求先変更報告書",
+  "管理会社変更":"管理会社変更報告書",
+  "同業者へ乗り換え":"同業者へ乗り換え報告書",
+  "同業者から返却":"同業者から返却報告書",
+  "苦情":"苦情報告書",
+  "取り忘れ":"取り忘れ報告書",
+  "トラブル":"トラブル報告書",
+  "その他":"顧客状況報告書"
+};
+const DEFAULT_TITLE = "顧客状況報告書";
+function docTitle(o){
+  const first = (o.kubun || [])[0];
+  return DOC_TITLE[first] || DEFAULT_TITLE;
+}
+/* 原本にならって1文字ずつ空ける。長い帳票名は字間を詰めて幅に収める */
+function titleHTML(t){
+  const spaced = t.split("").join(" ");
+  const ls = t.length >= 8 ? ".04em" : ".12em";
+  return `<h2 style="letter-spacing:${ls}">${esc(spaced)}</h2>`;
+}
+
+/* ---------- 旧データの移行 ----------
+   ・区分：閉店・廃業／中止・停止 → 中止 に寄せる
+   ・対応：営業の対応／業務の対応 を広聴内容に統合する */
+const KUBUN_MIGRATE = {
+  "閉店・廃業":"中止",
+  "中止・停止":"中止",
+  "閉店":"中止",
+  "廃業":"中止",
+  "停止":"中止"
+};
+function migrate(o){
+  if(!o || typeof o !== "object") return o;
+  if(Array.isArray(o.kubun)){
+    o.kubun = [...new Set(o.kubun.map(k => KUBUN_MIGRATE[k] || k))];
+  }
+  const add = [];
+  if(o.eigyo_taio) add.push("【営業の対応】\n" + o.eigyo_taio);
+  if(o.gyomu_taio) add.push("【業務の対応】\n" + o.gyomu_taio);
+  if(add.length){
+    o.naiyo = [o.naiyo, ...add].filter(Boolean).join("\n\n");
+    delete o.eigyo_taio;
+    delete o.gyomu_taio;
+  }
+  return o;
+}
 
 /* ---------- storage ---------- */
-function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || []; }catch(e){ return []; } }
+function load(){
+  try{
+    const list = JSON.parse(localStorage.getItem(LS_KEY)) || [];
+    return list.map(migrate);
+  }catch(e){ return []; }
+}
 function saveAll(list){ localStorage.setItem(LS_KEY, JSON.stringify(list)); }
 
 /* ---------- helpers ---------- */
@@ -722,7 +790,7 @@ function fmtYen(v){
 
 function getKubun(){ return [...document.querySelectorAll('input[name="kubun"]:checked')].map(e=>e.value); }
 function setKubun(arr){
-  const a = arr||[];
+  const a = (arr||[]).map(k => KUBUN_MIGRATE[k] || k);
   document.querySelectorAll('input[name="kubun"]').forEach(e=> e.checked = a.includes(e.value));
 }
 function getAiteType(){ const e=document.querySelector('input[name="aite_type"]:checked'); return e?e.value:"得意先関係"; }
@@ -746,7 +814,8 @@ function readForm(){
   o.__id=$("editId").value||"";
   return o;
 }
-function writeForm(o){
+function writeForm(src){
+  const o = migrate(JSON.parse(JSON.stringify(src || {})));
   TEXT_FIELDS.forEach(f=> $(f).value = o[f]!=null?o[f]:"");
   CHECK_FIELDS.forEach(f=> $(f).checked = !!o[f]);
   setKubun(o.kubun); setAiteType(o.aite_type);
@@ -771,28 +840,37 @@ function syncCond(){
   $("kubunOtherWrap").classList.toggle("show", k.includes("その他"));
   const dogyo = k.includes("同業者へ乗り換え")||k.includes("同業者から返却")||getAiteType()==="同業者関係";
   $("dogyoshaWrap").classList.toggle("show", dogyo);
-  // 契約解除登録申請書はチェックで開く。閉店・移転・中止のときだけ入れ忘れ防止の案内を出す
+  // 契約解除登録申請書はチェックで開く。中止・移転のときだけ入れ忘れ防止の案内を出す
   const on = $("kaijo_use").checked;
   $("kaijoFields").classList.toggle("show", on);
   $("kaijoRemind").classList.toggle("show", !on && k.some(v=>KAIJO_TRIGGERS.includes(v)));
   // 解除申請の住所・名称の既定値
   $("kaijo_addr").placeholder = $("jusho").value || "③の住所が自動で入ります";
   $("kaijo_name").placeholder = $("aite_name").value || "③の氏名・団体名が自動で入ります";
+  // 帳票名のプレビュー
+  $("titlePrev").textContent = docTitle({kubun:k});
+  $("titleNote").textContent = k.length > 1 ? `（複数選択のため、先頭の「${k[0]}」で決まります）` : "";
 }
 
 /* ---------- 清書 HTML ---------- */
-function buildDoc(o){
+function buildDoc(srcObj){
+  const o = migrate(JSON.parse(JSON.stringify(srcObj || {})));
   const uke = [fmtDateJP(o.uke_date,true), fmtTimeJP(o.uke_time)].filter(Boolean).join("　");
   const renraku = [o.renraku_hoho, o.renraku_memo?`（${o.renraku_memo}）`:""].filter(Boolean).join("");
   const taioTime = (o.taio_start||o.taio_end)
     ? `${fmtTimeShort(o.taio_start)} 〜 ${fmtTimeShort(o.taio_end)}` : "";
   const taio = [fmtDateJP(o.taio_date,true), taioTime].filter(Boolean).join("　");
   const aiteLabel = o.aite_type==="同業者関係" ? "相 手 会 社" : "相 手 先";
+  const tanto = [
+    `営業担当（${esc(o.eigyo_tanto||"")}）`,
+    `業務担当（${esc(o.gyomu_tanto||"")}）`,
+    `部長（${esc(o.gyomu_bucho||"")}）`
+  ].join("　");
 
   const page1 = `
   <div class="page">
     <div class="topdate">${esc(fmtDateJP(o.hokokubi))}</div>
-    <div class="dh"><h2>顧 客 状 況 報 告 書</h2></div>
+    <div class="dh">${titleHTML(docTitle(o))}</div>
     <div class="reporter">報告者 <span>${esc(o.hokokusha||"")}</span></div>
     <table>
       <tr>
@@ -826,12 +904,13 @@ function buildDoc(o){
           ${o.keiyaku_naiyo?`<span style="margin-left:8mm">${esc(o.keiyaku_naiyo)}</span>`:""}
         </td>
       </tr>
-      <tr><th>広 聴 内 容<br><span class="note" style="letter-spacing:0">（状況等）</span></th>
-        <td colspan="2" class="big">${nl2br(o.naiyo||"")}</td></tr>
-      <tr><th>営業の対応<br><span class="note" style="letter-spacing:0">担当（${esc(o.eigyo_tanto||"")}）</span></th>
-        <td colspan="2" class="big2">${nl2br(o.eigyo_taio||"")}</td></tr>
-      <tr><th>業務の対応<br><span class="note" style="letter-spacing:0">担当（${esc(o.gyomu_tanto||"")}）<br>部長（${esc(o.gyomu_bucho||"")}）</span></th>
-        <td colspan="2" class="big2">${nl2br(o.gyomu_taio||"")}</td></tr>
+      <tr><th>広 聴 内 容<br><span class="note" style="letter-spacing:0">（状況・対応）</span></th>
+        <td colspan="2" class="bigall">
+          <div class="cellflex">
+            <div>${nl2br(o.naiyo||"")}</div>
+            <div class="tantoline">${tanto}</div>
+          </div>
+        </td></tr>
       <tr><th class="n">車両</th>
         <td colspan="2">車番（${esc(o.shaban||"")}）　運転手（${esc(o.driver||"")}）　同乗者（${esc(o.dojo1||"")}）　同乗者（${esc(o.dojo2||"")}）</td></tr>
       <tr><th>対 応 日 時</th><td colspan="2">${esc(taio)||"—"}</td></tr>
@@ -934,7 +1013,7 @@ function validate(o){
   if(!o.hokokusha) miss.push("報告者");
   if(!o.kubun.length) miss.push("報告区分");
   if(!o.aite_name) miss.push("氏名・団体名");
-  if(!o.naiyo) miss.push("広聴内容");
+  if(!o.naiyo) miss.push("広聴内容・対応");
   return miss;
 }
 
@@ -950,10 +1029,10 @@ function renderHist(){
   box.innerHTML=list.map(o=>`
     <div class="hist-item">
       <div class="t">${esc(o.aite_name||"（相手先未入力）")}
-        <span class="badge">${esc(kubunText(o))||"区分なし"}</span>
+        <span class="badge">${esc(docTitle(o))}</span>
         ${o.__sent?`<span class="badge sent">送信済</span>`:""}
       </div>
-      <div class="m">${esc(fmtDateJP(o.hokokubi))}　報告者：${esc(o.hokokusha||"—")}</div>
+      <div class="m">${esc(fmtDateJP(o.hokokubi))}　報告者：${esc(o.hokokusha||"—")}　区分：${esc(kubunText(o))||"—"}</div>
       <div class="m">${esc(o.genba||o.jusho||"")}</div>
       <div class="mini">
         <button data-act="edit" data-id="${o.__id}">編集</button>
@@ -973,7 +1052,7 @@ function openPreview(o){
   if(!w){ toast("ポップアップがブロックされました"); return; }
   w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>顧客状況報告書</title><style>${css}
+    <title>${esc(docTitle(o))}</title><style>${css}
     body{background:#eef1f5; padding:16px}
     #printArea{position:static; left:0}
     /* 幅は印刷時と同じ186mmに固定（縮小率の計算を印刷と一致させるため） */
@@ -1000,6 +1079,7 @@ async function sendToSoumu(o){
     const payload = Object.assign({}, o, {
       key: SEND_KEY,
       kubun_text: kubunText(o),
+      doc_title: docTitle(o),
       doc_html: buildDoc(o),
       sent_at: new Date().toISOString()
     });
@@ -1101,7 +1181,7 @@ $("importFile").addEventListener("change", e=>{
       const inc=JSON.parse(r.result);
       if(!Array.isArray(inc)) throw new Error("形式が違います");
       const cur=load(); const ids=new Set(cur.map(x=>x.__id));
-      inc.forEach(x=>{ if(!ids.has(x.__id)) cur.push(x); });
+      inc.map(migrate).forEach(x=>{ if(!ids.has(x.__id)) cur.push(x); });
       saveAll(cur); renderHist(); toast(`取込しました（${inc.length}件）`);
     }catch(err){ toast("取込に失敗：" + err.message); }
     e.target.value="";
@@ -1113,6 +1193,9 @@ $("importFile").addEventListener("change", e=>{
 (function init(){
   clearForm(false);
   $("uke_date").value = todayStr();
+  // 旧形式で保存されていた履歴を新形式に書き戻す（初回だけ実質の移行になる）
+  const migrated = load();
+  if(migrated.length) saveAll(migrated);
   renderHist();
   if(!GAS_URL){
     $("btnSend").disabled = true;

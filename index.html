@@ -74,6 +74,11 @@
   .inline-check{display:flex; align-items:center; gap:7px; font-size:13px; margin-top:6px}
   .inline-check input{width:auto; margin:0; accent-color:var(--accent)}
 
+  /* 担当者サインのワンタッチ選択 */
+  .signpick{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px}
+  .signpick button{padding:6px 16px; font-size:13px}
+  .signpick button.on{background:var(--accent); border-color:var(--accent); color:#fff}
+
   /* 帳票名プレビュー */
   .titlechip{
     margin-top:10px; font-size:12px; color:var(--sub);
@@ -153,13 +158,25 @@
   .doc .sub-t tr:last-child td{border-bottom:none}
   .doc .sub-t td.k{width:20mm; text-align:center; border-right:1px solid #111; letter-spacing:.4em; white-space:nowrap}
   .doc .note{font-size:10.5px; color:#333}
-  .doc .kubun-line{font-size:12px; font-weight:700}
+  /* 報告区分の行は一番目立たせたいので大きめに */
+  .doc td.kubunrow{height:10mm; vertical-align:middle}
+  .doc .kubun-line{font-size:16px; font-weight:700; letter-spacing:.04em}
+  .doc .kubun-sub{font-size:12.5px; color:#333}
   .doc .yen{font-size:14px; font-weight:700; letter-spacing:.02em}
   .doc .stamp{margin-top:5mm; display:flex; justify-content:space-between; align-items:flex-end; gap:6mm}
   .doc .stamp .memo{font-size:11px; text-decoration:underline}
   .doc .stamp table{width:auto}
   .doc .stamp th,.doc .stamp td{width:17mm; text-align:center; letter-spacing:0; font-size:10.5px; padding:3px 2px}
   .doc .stamp td{height:14mm}
+  /* 担当者マスのサイン。手書き系フォントが無い環境では明朝にフォールバックし、
+     わずかに傾けて署名らしく見せる */
+  .doc .stamp td.signcell{vertical-align:middle}
+  .doc .sign{
+    display:inline-block; line-height:1; font-size:15px; color:#111;
+    transform:rotate(-4deg);
+    font-family:"HGP行書体","HG行書体","UD デジタル教科書体 NP-R","游教科書体",
+                "Yu Mincho","YuMincho","MS PMincho",serif;
+  }
   .doc .mapbox{border:1px solid #111; border-top:none; height:88mm; padding:5px 7px; font-size:11px}
   .doc .cap{font-size:11.5px; font-weight:700; margin:3mm 0 1mm}
   .doc .juryo{border:1px solid #111; width:34mm; font-size:11px; margin-bottom:4mm}
@@ -248,6 +265,17 @@
                 <span class="lab">報告者<span class="req">*</span></span>
                 <input type="text" id="hokokusha" placeholder="例）木村">
               </label>
+            </div>
+            <div style="margin-top:10px">
+              <span class="lab" style="display:block; font-size:12px; color:var(--sub); font-weight:600; margin-bottom:4px">担当者サイン（印鑑欄の「担当者」に入ります）</span>
+              <div class="signpick" id="signPick">
+                <button type="button" data-sign="木村">木村</button>
+                <button type="button" data-sign="原田">原田</button>
+                <button type="button" data-sign="藤川">藤川</button>
+                <button type="button" data-sign="">消す</button>
+              </div>
+              <input type="text" id="sign_tanto" placeholder="上のボタンで選ぶか、ここに直接入力">
+              <div class="hint" style="margin-top:4px">空欄のままなら「報告者」の名前がそのままサインとして入ります。</div>
             </div>
           </fieldset>
 
@@ -549,7 +577,7 @@ const LS_KEY = "daisen_kokyaku_report_v1";
 const $ = id => document.getElementById(id);
 
 const TEXT_FIELDS = [
-  "hokokubi","hokokusha","kubun_other",
+  "hokokubi","hokokusha","sign_tanto","kubun_other",
   "uke_date","uke_time","renraku_hoho","renraku_memo",
   "aite_name","aite_daihyo","aite_tanto","renrakusaki","genba","jusho","dogyosha",
   "getsugaku","keiyaku_naiyo",
@@ -850,6 +878,7 @@ function syncCond(){
   // 帳票名のプレビュー
   $("titlePrev").textContent = docTitle({kubun:k});
   $("titleNote").textContent = k.length > 1 ? `（複数選択のため、先頭の「${k[0]}」で決まります）` : "";
+  syncSignPick();
 }
 
 /* ---------- 清書 HTML ---------- */
@@ -866,6 +895,8 @@ function buildDoc(srcObj){
     `業務担当（${esc(o.gyomu_tanto||"")}）`,
     `部長（${esc(o.gyomu_bucho||"")}）`
   ].join("　");
+  // 印鑑欄「担当者」のサイン。未指定なら報告者をそのまま使う
+  const sign = (o.sign_tanto || o.hokokusha || "").trim();
 
   const page1 = `
   <div class="page">
@@ -875,8 +906,8 @@ function buildDoc(srcObj){
     <table>
       <tr>
         <th>報告区分</th>
-        <td colspan="2"><span class="kubun-line">${esc(kubunText(o))||"—"}</span>
-          <span class="note">　／　${esc(o.aite_type||"")}</span></td>
+        <td colspan="2" class="kubunrow"><span class="kubun-line">${esc(kubunText(o))||"—"}</span>
+          <span class="kubun-sub">　／　${esc(o.aite_type||"")}</span></td>
       </tr>
       <tr><th>受 付 日 時</th><td colspan="2">${esc(uke)||"—"}</td></tr>
       <tr><th>連絡の方法</th><td colspan="2">${esc(renraku)||"—"}</td></tr>
@@ -920,7 +951,7 @@ function buildDoc(srcObj){
       <div class="memo">${o.keiyakusho_tenpu?"契約書（大泉衛生の）を添付・コピー":""}</div>
       <table>
         <tr><th>担当者</th><th>事務員</th><th>業務責任者</th><th>営業責任者</th><th>管理責任者</th><th>会　長</th></tr>
-        <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+        <tr><td class="signcell">${sign?`<span class="sign">${esc(sign)}</span>`:""}</td><td></td><td></td><td></td><td></td><td></td></tr>
       </table>
     </div>
   </div>`;
@@ -1123,6 +1154,21 @@ function markSent(id){
 }
 
 /* ---------- イベント ---------- */
+/* 担当者サインのワンタッチ選択 */
+function syncSignPick(){
+  const v = $("sign_tanto").value.trim();
+  document.querySelectorAll('#signPick button').forEach(b=>
+    b.classList.toggle("on", b.dataset.sign !== "" && b.dataset.sign === v));
+}
+$("signPick").addEventListener("click", e=>{
+  const b = e.target.closest("button[data-sign]"); if(!b) return;
+  // 同じ人をもう一度押したら解除
+  $("sign_tanto").value = (b.dataset.sign && $("sign_tanto").value.trim() === b.dataset.sign)
+    ? "" : b.dataset.sign;
+  syncSignPick();
+});
+$("sign_tanto").addEventListener("input", syncSignPick);
+
 $("kubunBox").addEventListener("change", syncCond);
 document.querySelectorAll('input[name="aite_type"]').forEach(e=>e.addEventListener("change", syncCond));
 $("kaijo_use").addEventListener("change", syncCond);
